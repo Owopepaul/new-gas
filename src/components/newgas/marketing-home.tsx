@@ -28,8 +28,8 @@ export function MarketingHome() {
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
-              <Flame size={22} strokeWidth={2.3} />
+            <span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-sm font-black tracking-[-1px] text-white shadow-sm">
+              NG
             </span>
             <div>
               <div className="text-[26px] font-black tracking-[-1px] text-slate-800">New<span className="text-primary">Gas</span><span className="text-primary">.</span></div>

@@ -1,9 +1,9 @@
-import { Flame, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
 
 export function Brand({ compact = false }: { compact?: boolean }) {
-  return <div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><Flame size={26} strokeWidth={2.3} /></div>{!compact && <span className="text-[25px] font-bold tracking-[-1px] text-slate-800">New<span className="text-primary">Gas</span><span className="ml-0.5 text-primary">.</span></span>}</div>;
+  return <div className="flex items-center gap-2.5"><span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-sm font-black tracking-[-1px] text-white">NG</span>{!compact && <span className="text-[25px] font-bold tracking-[-1px] text-slate-800">New<span className="text-primary">Gas</span><span className="ml-0.5 text-primary">.</span></span>}</div>;
 }
 export function Status({ children }: { children: ReactNode }) {
   const text = String(children);
