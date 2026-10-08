@@ -1,14 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { initialData, Role, Worker, Product, orderStages } from '@/lib/demo-data';
+import { initialData, money, Role, Worker, Product, orderStages } from '@/lib/demo-data';
+import { getDemoRoleCookie, setDemoRoleCookie } from '@/lib/demo-auth';
 import type { ActionConfig } from './action-dialog';
 
 export function useDemoWorkspace() {
   const [data, setData] = useState(initialData);
   const [role, setRole] = useState<Role>('owner');
   const [page, setPage] = useState('Overview');
+  const [roleReady, setRoleReady] = useState(false);
+
+  useEffect(() => {
+    const savedRole = getDemoRoleCookie();
+    if (savedRole) {
+      setRole(savedRole);
+      setPage(savedRole === 'owner' ? 'Overview' : savedRole === 'worker' ? 'My tasks' : 'Products');
+    }
+    setRoleReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (roleReady) setDemoRoleCookie(role);
+  }, [role, roleReady]);
   const [dialog, setDialog] = useState<ActionConfig | null>(null);
   const workerId = 'w1';
   const client = 'Greenfield Foods';
@@ -20,7 +35,7 @@ export function useDemoWorkspace() {
     setDialog({ title: worker ? 'Edit worker' : 'Add a team member', description: 'Demo team record only. This does not create a Neon Auth account or send an invitation.', fields: [
       { key:'name', label:'Full name', value:worker?.name }, { key:'email', label:'Email address', type:'email', value:worker?.email },
       { key:'phone', label:'Phone number', value:worker?.phone }, { key:'title', label:'Job title', value:worker?.title },
-      { key:'start', label:'Start date', type:'date', value:worker?.start }, { key:'salary',label:'Monthly base pay (currency not set)',type:'number',value:String(worker?.salary ?? 0),min:0 },
+      { key:'start', label:'Start date', type:'date', value:worker?.start }, { key:'salary',label:'Monthly salary (₦)',type:'number',value:String(worker?.salary ?? 0),min:0 },
       { key:'commission',label:'Sales commission (%)',type:'number',value:String(worker?.commission ?? 0),min:0,max:100 },
     ], onSubmit: values => { const record = { ...values, id:worker?.id ?? crypto.randomUUID(), salary:Number(values.salary), commission:Number(values.commission) } as Worker; setData(d => ({...d, workers:worker ? d.workers.map(w => w.id === worker.id ? record : w) : [...d.workers,record]})); done(worker ? 'Worker updated' : 'Team member added'); } });
   }
@@ -41,7 +56,7 @@ export function useDemoWorkspace() {
     }});
   }
   function stockForm(product: Product) {
-    setDialog({title:`Manage ${product.name} · ${product.size}`, description:'Update current stock, pricing, and the low-stock threshold.', fields:[{key:'stock',label:'Available stock',type:'number',value:String(product.stock),min:0},{key:'threshold',label:'Low-stock alert threshold',type:'number',value:String(product.threshold),min:0},{key:'price',label:'Unit price (currency not set)',type:'number',value:String(product.price),min:0.01}],onSubmit:values => { if(product.name !== 'Bulk LPG' && !Number.isInteger(Number(values.stock))) return toast.error('Cylinder stock must be a whole number.'); setData(d => ({...d,products:d.products.map(p => p.id !== product.id ? p : {...p,stock:Number(values.stock),threshold:Number(values.threshold),price:Number(values.price)})})); done('Inventory updated'); }});
+    setDialog({title:`Manage ${product.name} · ${product.size}`, description:'Update current stock, pricing, and the low-stock threshold.', fields:[{key:'stock',label:'Available stock',type:'number',value:String(product.stock),min:0},{key:'threshold',label:'Low-stock alert threshold',type:'number',value:String(product.threshold),min:0},{key:'price',label:'Unit price (₦)',type:'number',value:String(product.price),min:0.01}],onSubmit:values => { if(product.name !== 'Bulk LPG' && !Number.isInteger(Number(values.stock))) return toast.error('Cylinder stock must be a whole number.'); setData(d => ({...d,products:d.products.map(p => p.id !== product.id ? p : {...p,stock:Number(values.stock),threshold:Number(values.threshold),price:Number(values.price)})})); done('Inventory updated'); }});
   }
   function placeOrder(product?: Product) {
     setDialog({title:'Place a delivery order', description:'Pay on delivery. Demo only — no dispatch or payment will be initiated.', submit:'Place demo order', fields:[{key:'productId',label:'Product',options:productOptions,value:product?.id},{key:'quantity',label:'Quantity',type:'number',min:1},{key:'address',label:'Delivery address',value:'24 Market Street, Riverside'}],onSubmit:values => { const p = data.products.find(p => p.id === values.productId)!; const quantity = Number(values.quantity); if(quantity > p.stock || (p.name !== 'Bulk LPG' && !Number.isInteger(quantity))) return toast.error('Please choose an available quantity. Cylinders must be whole units.'); setData(d => ({...d,products:d.products.map(item => item.id === p.id ? {...item,stock:item.stock-quantity}:item),orders:[{id:crypto.randomUUID().slice(0,6).toUpperCase(),client,productId:p.id,quantity,address:values.address,workerId:'',amount:p.price*quantity,history:[{status:'Order Received',time:new Date().toISOString()}]},...d.orders]})); done('Order placed · stock reserved'); setPage('My orders'); }});
@@ -50,13 +65,29 @@ export function useDemoWorkspace() {
     const order = data.orders.find(o => o.id === id)!; const current = order.history.at(-1)!.status; const next = orderStages[orderStages.indexOf(current as typeof orderStages[number])+1];
     setDialog({title:`Manage order #${id}`,description:`${order.client} · ${order.address}. Current status: ${current}.`,submit:next ? `Move to ${next}` : 'Update assignment',fields:[{key:'workerId',label:'Assigned worker',value:order.workerId || undefined,options:workerOptions}],onSubmit:values => { setData(d => ({...d,orders:d.orders.map(o => o.id === id ? {...o,workerId:values.workerId,history:next ? [...o.history,{status:next,time:new Date().toISOString()}]:o.history}:o)})); done(next ? `Order ${next.toLowerCase()}` : 'Assignment updated'); }});
   }
-  function requestWithdrawal() {
-    const worker = data.workers.find(w => w.id === workerId)!;
-    const earned = worker.salary + data.transactions.filter(t => t.workerId === workerId).reduce((s,t) => s+t.amount*worker.commission/100,0);
-    const reserved = data.withdrawals.filter(w => w.workerId === workerId && w.status !== 'Declined').reduce((s,w) => s+w.amount,0);
-    setDialog({title:'Request a withdrawal',description:`Demo available earnings: ${(earned-reserved).toFixed(2)}. Owner approval only. No funds are transferred and no bank details are collected.`,submit:'Submit request',fields:[{key:'amount',label:'Requested amount (currency not set)',type:'number',min:0.01,max:Math.max(0,earned-reserved)}],onSubmit:values => { const amount=Number(values.amount); if (amount > earned-reserved) return toast.error('Request exceeds available earnings.'); setData(d=>({...d,withdrawals:[{id:crypto.randomUUID(),workerId,amount,status:'Requested',date:new Date().toISOString()},...d.withdrawals]})); done('Withdrawal request sent for approval'); }});
+  function fundWallet() {
+    setDialog({title:'Add demo funds',description:'Add simulated funds to the company wallet for payroll testing. This does not charge a card or move real money.',submit:'Add demo funds',fields:[{key:'amount',label:'Amount (₦)',type:'number',min:1}],onSubmit:values=>{const amount=Number(values.amount);setData(d=>({...d,walletBalance:d.walletBalance+amount}));done('Demo funds added to company wallet');}});
   }
-  function withdrawalDecision(id:string, approve:boolean) { setData(d=>({...d,withdrawals:d.withdrawals.map(w=>w.id === id && w.status === 'Requested' ? {...w,status:approve?'Approved · awaiting payout integration':'Declined'}:w)})); toast.success(approve ? 'Approved. No funds moved — payout integration is required.' : 'Request declined'); }
-  return {data,role,setRole,page,setPage,dialog,close,workerId,client,workerForm,removeWorker,addTask,toggleTask,addSale,stockForm,placeOrder,manageOrder,requestWithdrawal,withdrawalDecision};
+  function paySalary(workerIdToPay?: string) {
+    const period = new Date().toISOString().slice(0,7);
+    const workersToPay = data.workers.filter(worker=>!workerIdToPay||worker.id===workerIdToPay).filter(worker=>!data.payrollPayments.some(payment=>payment.workerId===worker.id&&payment.period===period));
+    if (!workersToPay.length) return toast.error('There are no unpaid salaries for this pay period.');
+    const total = workersToPay.reduce((sum,worker)=>sum+worker.salary,0);
+    if (total > data.walletBalance) return toast.error(`Insufficient demo funds. Add ${money(total-data.walletBalance)} to cover these salaries.`);
+    const paidAt = new Date().toISOString();
+    setData(d=>({...d,walletBalance:d.walletBalance-total,workerBalances:workersToPay.reduce((balances,worker)=>({...balances,[worker.id]:(balances[worker.id]??0)+worker.salary}),{...d.workerBalances}),payrollPayments:[...workersToPay.map(worker=>({id:crypto.randomUUID(),workerId:worker.id,amount:worker.salary,period,date:paidAt})),...d.payrollPayments]}));
+    done(workersToPay.length===1?`Salary paid to ${workersToPay[0].name}`:`${workersToPay.length} salaries paid`);
+  }
+  function giftCustomer() {
+    const clients=Array.from(new Set(data.orders.map(order=>order.client)));
+    if (!clients.length) return toast.error('Add a customer order before creating a customer gift.');
+    setDialog({title:'Create a customer gift',description:'Prepare a demo customer reward for a special occasion. No real discount or delivery is issued.',submit:'Create gift',fields:[{key:'client',label:'Customer',options:clients.map(value=>({value,label:value}))},{key:'occasion',label:'Special occasion'},{key:'date',label:'Gift date',type:'date',value:new Date().toISOString().slice(0,10)},{key:'reward',label:'Gift or reward'},{key:'message',label:'Message for customer'}],onSubmit:values=>{setData(d=>({...d,gifts:[{id:crypto.randomUUID(),client:values.client,occasion:values.occasion,reward:values.reward,message:values.message,date:values.date},...d.gifts]}));done('Customer gift created');}});
+  }
+  function requestWithdrawal() {
+    const available = data.workerBalances[workerId] ?? 0;
+    if (available <= 0) return toast.error('There is no paid salary available to withdraw yet.');
+    setDialog({title:'Withdraw to personal account',description:`Available paid salary: ${money(available)}. This demo simulates a withdrawal only. Do not enter bank details; no real transfer occurs.`,submit:'Complete demo withdrawal',fields:[{key:'amount',label:'Amount (₦)',type:'number',min:1,max:available},{key:'destination',label:'Destination',options:[{value:'Personal account',label:'Personal account'},{value:'Other personal account',label:'Other personal account'}]}],onSubmit:values=>{const amount=Number(values.amount);if(amount>available)return toast.error('Withdrawal exceeds your available paid balance.');setData(d=>({...d,workerBalances:{...d.workerBalances,[workerId]:(d.workerBalances[workerId]??0)-amount},withdrawals:[{id:crypto.randomUUID(),workerId,amount,destination:values.destination,status:'Completed · demo only',date:new Date().toISOString()},...d.withdrawals]}));done('Demo withdrawal completed');}});
+  }
+  return {data,role,setRole,page,setPage,dialog,close,workerId,client,workerForm,removeWorker,addTask,toggleTask,addSale,stockForm,placeOrder,manageOrder,fundWallet,paySalary,giftCustomer,requestWithdrawal};
 }
 export type Workspace = ReturnType<typeof useDemoWorkspace>;

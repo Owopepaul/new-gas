@@ -1,5 +1,5 @@
-import { Dashboard } from '@/components/newgas/dashboard';
+import { MarketingHome } from '@/components/newgas/marketing-home';
 
 export default function Home() {
-  return <Dashboard />;
+  return <MarketingHome />;
 }

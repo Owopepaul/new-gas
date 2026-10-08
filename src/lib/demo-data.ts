@@ -5,9 +5,11 @@ export type Task = { id: string; title: string; workerId: string; due: string; s
 export type Transaction = { id: string; workerId: string; productId: string; quantity: number; amount: number; method: string; created: string; status: string };
 export const orderStages = ['Order Received', 'Confirmed', 'Preparing', 'Out for Delivery', 'Delivered'] as const;
 export type Order = { id: string; client: string; productId: string; quantity: number; address: string; workerId: string; history: { status: string; time: string }[]; amount: number };
-export type Withdrawal = { id: string; workerId: string; amount: number; status: 'Requested' | 'Approved · awaiting payout integration' | 'Declined'; date: string };
-export type DemoData = { workers: Worker[]; products: Product[]; tasks: Task[]; transactions: Transaction[]; orders: Order[]; withdrawals: Withdrawal[] };
-export const money = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+export type Withdrawal = { id: string; workerId: string; amount: number; destination: string; status: 'Completed · demo only'; date: string };
+export type PayrollPayment = { id: string; workerId: string; amount: number; period: string; date: string };
+export type CustomerGift = { id: string; client: string; occasion: string; message: string; reward: string; date: string };
+export type DemoData = { workers: Worker[]; products: Product[]; tasks: Task[]; transactions: Transaction[]; orders: Order[]; withdrawals: Withdrawal[]; walletBalance: number; workerBalances: Record<string, number>; payrollPayments: PayrollPayment[]; gifts: CustomerGift[] };
+export const money = (value: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
 export const demoDate = '2026-05-18';
 export function initialData(): DemoData {
   const workers: Worker[] = [
@@ -38,7 +40,7 @@ export function initialData(): DemoData {
     { id: '1041', client: 'Summit Hospitality', productId: 'p3', quantity: 12, address: '18 Summit Avenue, Central', workerId: 'w3', amount: 1104, history: [{ status: 'Order Received', time: '2026-05-18T07:30:00Z' }] },
     { id: '1040', client: 'Greenfield Foods', productId: 'p2', quantity: 10, address: '24 Market Street, Riverside', workerId: 'w1', amount: 250, history: orderStages.map((status, i) => ({ status, time: `2026-05-17T${String(8 + i).padStart(2, '0')}:00:00Z` })) },
   ];
-  return { workers, products, tasks, transactions, orders, withdrawals: [] };
+  return { workers, products, tasks, transactions, orders, withdrawals: [], walletBalance: 0, workerBalances: {}, payrollPayments: [], gifts: [] };
 }
 
 export function downloadCsv(name: string, rows: (string | number)[][]) {

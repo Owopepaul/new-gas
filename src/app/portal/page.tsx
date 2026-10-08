@@ -1,15 +1,24 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ShieldCheck, ArrowLeft } from 'lucide-react';
 import { getAuth } from '@/lib/auth/server';
 import { Brand } from '@/components/newgas/shared';
 import { SignOutButton } from '@/components/newgas/sign-out';
+import { DEMO_ROLE_COOKIE } from '@/lib/demo-auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PortalPage() {
+  const demoRole = (await cookies()).get(DEMO_ROLE_COOKIE)?.value;
   const auth = getAuth();
-  if (!auth) redirect('/auth/sign-in');
+
+  if (!auth && !demoRole) redirect('/auth/sign-in');
+
+  if (!auth) {
+    return <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6"><section className="w-full max-w-lg rounded-2xl border bg-white p-8 shadow-sm"><Brand/><ShieldCheck className="mt-8 text-primary" size={32}/><h1 className="mt-4 text-2xl font-semibold text-slate-800">Demo access active.</h1><p className="mt-3 text-sm leading-7 text-slate-500">You’re signed in as the {demoRole} demo role. This portal is intentionally unlocked for testing without Neon Auth.</p><p className="mt-4 rounded-xl bg-amber-50 p-4 text-xs leading-6 text-amber-800">In demo mode, you can switch access by signing in again with an owner, worker, or client account.</p><div className="mt-6 flex items-center justify-between"><Link href="/" className="flex items-center gap-2 text-xs text-primary"><ArrowLeft size={14}/>Return to sample workspace</Link><SignOutButton/></div></section></main>;
+  }
+
   const { data:session } = await auth.getSession();
   if (!session?.user) redirect('/auth/sign-in');
   // Fail closed: authentication alone never grants a business role.

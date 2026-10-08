@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "NewGas — Your station, connected",
   description: "A connected workspace for gas station operations, your team, and your customers.",
+  authors: [{ name: "Paul Owope" }],
+  creator: "Paul Owope",
 };
 
 export default function RootLayout({
