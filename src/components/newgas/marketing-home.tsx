@@ -235,11 +235,10 @@ export function MarketingHome() {
               <li className="flex items-center gap-2"><MapPin size={14} /> 24 Market Street, Riverside</li>
               <li className="flex items-center gap-2"><Phone size={14} /> +234 (0) 800 123 4567</li>
             </ul>
-            <p className="mt-5 text-xs text-slate-400">Company owner: Paul Owope</p>
           </div>
         </div>
         <div className="mx-auto max-w-7xl border-t border-slate-800 px-6 py-4 text-xs text-slate-500 lg:px-8">
-          Website by Paul Owope
+          Website by Kentrix
         </div>
       </footer>
     </main>
